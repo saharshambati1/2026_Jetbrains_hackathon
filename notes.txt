@@ -1,0 +1,4 @@
+✔ Isolation Forest — detect mistakes
+✔ XGBoost — predict hypothetical scenarios
+✔ KMeans — generate macro patterns
+✔ LLM (OpenAI/Gemini) — write natural language insights
