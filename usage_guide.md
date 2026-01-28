@@ -27,12 +27,16 @@ You now have a working **Introduction to the Assistant Coach**. Here is how to m
 
 
 
-## 3. Automated Macro Review (Next Step)
+## 3. Automated Macro Review (Implemented)
 **Goal:** "Generate a Game Review Agenda."
 
-**Your Tool:** *Not yet built* (Planned: KMeans Clustering)
--   **Concept:** Cluster rounds into types (e.g., "Fast B Rush", "Slow Default").
--   **Plan:** Identify if a specific strategy (Cluster A) has a low win rate.
+**Your Tool:** `macro_review.py`
+-   **How to run:** `python macro_review.py`
+-   **What it does:** Scans the entire match history for strategic errors.
+-   **Demo Output:**
+    > "CRITICAL: Lost Pistol Rounds (1, 13)"
+    > "ECONOMY: Failed Force Buys on round 2"
+    > "STRATEGY: Threw 5v3 advantage on round 15"
 
 ---
 
