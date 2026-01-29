@@ -1,5 +1,14 @@
 # How to Use Your Models for the Challenge
 
+
+
+Run the `verify_all.py` script to test your models.
+
+
+
+
+
+
 You now have a working **Introduction to the Assistant Coach**. Here is how to map what we built to the specific Challenge Prompts:
 
 ## 1. Personalized Insight Generation
