@@ -1,109 +1,107 @@
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
 import pandas as pd
 import numpy as np
 
 class MacroReviewGenerator:
-    def __init__(self):
-        pass
+    def __init__(self, n_clusters=4):
+        self.n_clusters = n_clusters
+        self.kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+        self.scaler = StandardScaler()
+        self.archetypes = {
+            0: "Delayed Reset (High Gold/Low Tempo)",
+            1: "Post-Plant Collapse (Late Round Issues)",
+            2: "Ultimate Deficit (Low Orb Control)",
+            3: "Optimal Tempo (High Win Rate)"
+        }
 
-    def generate_mock_match(self):
-        # Simulate a cohesive match storyline (MR12 format)
-        # Round 1: Limit testing Pistol
-        rounds = []
-        scores = [0, 0] # Team A, Team B
-        
-        for r in range(1, 26): # Up to 25 rounds
-            # Logic to create specific scenarios
+    def generate_segment_data(self, n_segments=100):
+        np.random.seed(42)
+        segments = []
+        for i in range(n_segments):
+            # Features: Gold, Orb Control, Execution Time, Win Rate
+            unspent_gold = np.random.normal(2000, 1000)
+            orbs_picked_up = np.random.randint(2, 10)
+            avg_exec_time = np.random.normal(45, 15) # Seconds left in round
+            win_rate = np.random.uniform(0, 1)
             
-            # Defaults
-            team_buy_type = "Full Buy"
-            enemy_buy_type = "Full Buy"
-            win = np.random.choice([True, False])
-            details = "Standard Gun Round"
+            # Pattern: Late Round Executions (<20s)
+            if i % 8 == 0:
+                avg_exec_time = 15
+                win_rate = 0.2
             
-            # Scenario: Pistol Rounds
-            if r == 1 or r == 13:
-                team_buy_type = "Pistol"
-                enemy_buy_type = "Pistol"
-                details = "Pistol Round"
-                win = False # Let's say we lose pistols to trigger that review point
+            # Pattern: Ultimate Deficit
+            if i % 6 == 0:
+                orbs_picked_up = 3
             
-            # Scenario: Force Buy after Pistol Loss
-            elif r == 2 and rounds[-1]['win'] == False:
-                team_buy_type = "Force Buy"
-                enemy_buy_type = "Anti-Eco"
-                details = "Force Buy vs Anti-Eco"
-                win = False # Lose the force -> Economic collapse
-                
-            # Scenario: Throwing a 5v3
-            elif r == 15:
-                team_buy_type = "Full Buy"
-                enemy_buy_type = "Full Buy"
-                details = "5v3 Advantage"
-                win = False # Throw
-                
-            rounds.append({
-                "round_num": r,
-                "team_score_before": f"{scores[0]}-{scores[1]}",
-                "team_buy": team_buy_type,
-                "enemy_buy": enemy_buy_type,
-                "win": win,
-                "details": details
+            segments.append({
+                "segment_id": i,
+                "unspent_gold": max(0, unspent_gold),
+                "orbs_picked_up": orbs_picked_up,
+                "execution_time_left": max(5, avg_exec_time),
+                "win_rate": win_rate
             })
-            
-            if win: scores[0] += 1
-            else: scores[1] += 1
-            
-            if scores[0] == 13 or scores[1] == 13: break
-            
-        return pd.DataFrame(rounds)
+        return pd.DataFrame(segments)
 
-    def analyze_match(self, df):
-        agenda = []
+    def train_macro_discovery(self, df):
+        features = ["unspent_gold", "orbs_picked_up", "execution_time_left", "win_rate"]
+        X = df[features]
+        X_scaled = self.scaler.fit_transform(X)
+        self.kmeans.fit(X_scaled)
+
+    def generate_review_agenda(self, match_id, team_name, opponent, map_name, match_df):
+        """
+        Generates a structured Game Review Agenda report.
+        """
+        features = ["unspent_gold", "orbs_picked_up", "execution_time_left", "win_rate"]
+        X = match_df[features]
+        X_scaled = self.scaler.transform(X)
+        clusters = self.kmeans.predict(X_scaled)
         
-        print("Analyzing Match Data...")
-        
-        # 1. Pistol Round Analysis
-        pistols = df[df['round_num'].isin([1, 13])]
-        pistol_wins = pistols[pistols['win'] == True]
-        if len(pistol_wins) < 2:
-            lost_pistols = pistols[pistols['win'] == False]['round_num'].tolist()
-            agenda.append(f"CRITICAL: Lost Pistol Rounds ({', '.join(map(str, lost_pistols))}). Momentum starter failed.")
+        counts = pd.Series(clusters).value_counts(normalize=True)
+        dominant_id = counts.idxmax()
 
-        # 2. Economy Management (Force Buy detection)
-        # Check rounds where we Forced vs Anti-Eco and Lost
-        bad_forces = df[
-            (df['team_buy'] == "Force Buy") & 
-            (df['enemy_buy'] == "Anti-Eco") & 
-            (df['win'] == False)
-        ]
-        if not bad_forces.empty:
-            rounds_str = ", ".join(map(str, bad_forces['round_num'].tolist()))
-            agenda.append(f"ECONOMY: Failed Force Buys on rounds {rounds_str}. Resulted in broken economy.")
+        # Structured Agenda
+        agenda = {
+            "Match": f"BO1 vs {opponent}",
+            "Map": map_name,
+            "Dominant Pattern": self.archetypes.get(dominant_id),
+            "Agenda Items": []
+        }
 
-        # 3. Choke Points (Throws)
-        # In real implementation, we'd use the Predictor here.
-        # For now, look for "5v3 Advantage" in details that resulted in Loss
-        throws = df[
-            (df['details'].str.contains("5v3")) & 
-            (df['win'] == False)
-        ]
-        if not throws.empty:
-            rounds_str = ", ".join(map(str, throws['round_num'].tolist()))
-            agenda.append(f"STRATEGY: Threw 5v3 advantage on round {rounds_str}. Review player positioning.")
+        # 1. Ultimate Economy
+        avg_orbs = match_df['orbs_picked_up'].mean()
+        if avg_orbs < 5:
+            agenda["Agenda Items"].append(f"Ultimate Economy: Only {avg_orbs:.1f} orbs picked up per phase. Deficit in ultimate pressure.")
+
+        # 2. Execution Timing
+        late_execs = match_df[match_df['execution_time_left'] < 20]
+        if not late_execs.empty:
+            agenda["Agenda Items"].append(f"Mid-Round Calls: {len(late_execs)} attack phases saw late pushes (<20s left). Critical for round conversions.")
+
+        # 3. Economy (Cluster 0)
+        if dominant_id == 0:
+            agenda["Agenda Items"].append("Eco Management: Recurring high unspent gold in lost rounds. Review buy/save criteria.")
 
         return agenda
 
 if __name__ == "__main__":
     reviewer = MacroReviewGenerator()
-    match_data = reviewer.generate_mock_match()
+    pop_data = reviewer.generate_segment_data(200)
+    reviewer.train_macro_discovery(pop_data)
     
-    print("\n--- Match History ---")
-    print(match_data[['round_num', 'team_score_before', 'team_buy', 'win', 'details']].to_string(index=False))
+    # Specific Match Data (from user prompt scenario)
+    match_data = pd.DataFrame([
+        {"unspent_gold": 1200, "orbs_picked_up": 4, "execution_time_left": 15, "win_rate": 0.0},
+        {"unspent_gold": 2500, "orbs_picked_up": 3, "execution_time_left": 18, "win_rate": 0.0},
+        {"unspent_gold": 4000, "orbs_picked_up": 6, "execution_time_left": 40, "win_rate": 0.5},
+    ])
     
-    print("\n\n=== AUTOMATED COACH AGENDA ===")
-    agenda_items = reviewer.analyze_match(match_data)
-    for i, item in enumerate(agenda_items, 1):
-        print(f"{i}. {item}")
+    report = reviewer.generate_review_agenda("M1", "C9", "Team X", "Corrode", match_data)
     
-    if not agenda_items:
-        print("No critical issues found. Good game!")
+    print("\n[PROMPT 2: AUTOMATED MACRO REVIEW]")
+    print(f"Generated Review Agenda for {report['Map']}:")
+    print(f"Match: {report['Match']}")
+    print(f"Dominant Pattern: {report['Dominant Pattern']}")
+    for item in report['Agenda Items']:
+        print(f"- {item}")

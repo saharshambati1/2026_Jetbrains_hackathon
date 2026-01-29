@@ -7,11 +7,15 @@ load_dotenv()
 class CoachBrain:
     def __init__(self):
         self.api_key = os.getenv("OPENAI_API_KEY")
+        self.mock_mode = False
         if not self.api_key:
-            raise ValueError("OPENAI_API_KEY not found in environment variables")
-        self.client = openai.OpenAI(api_key=self.api_key)
+            print("WARNING: OPENAI_API_KEY not found. Running in MOCK MODE.")
+            self.mock_mode = True
+            self.client = None
+        else:
+            self.client = openai.OpenAI(api_key=self.api_key)
 
-    def ask_coach(self, system_persona, user_query, match_context=None):
+    def ask_coach(self, system_persona, user_query, match_context=None, data_evidence=None):
         """
         Generic method to query the LLM with a specific persona and context.
         """
@@ -21,82 +25,83 @@ class CoachBrain:
         
         if match_context:
             messages.append({"role": "system", "content": f"MATCH CONTEXT: {match_context}"})
+        
+        if data_evidence:
+            messages.append({"role": "system", "content": f"HARD DATA EVIDENCE: {data_evidence}"})
             
         messages.append({"role": "user", "content": user_query})
+
+        if self.mock_mode:
+            return self._mock_data_backed_response(user_query, data_evidence)
 
         try:
             response = self.client.chat.completions.create(
                 model="gpt-4o", 
                 messages=messages,
-                max_tokens=300,
-                temperature=0.7
+                max_tokens=400,
+                temperature=0.3 # Lower temperature for better data fidelity
             )
             return response.choices[0].message.content.strip()
         except Exception as e:
-            print(f"DEBUG: LLM Error ({e}). Using Mock Response.")
-            # Fallback for Demo purposes if API fails
-            if "buy" in user_query.lower():
-                return "Coach (Mock): Since you have 2000 credits and lost the last round, I recommend a 'Force Buy' with a Sheriff or Spectre to try and break their economy. Don't full save."
-            if "aim" in user_query.lower() or "missing" in user_query.lower():
-                return "Coach (Mock): Your headshot rate is low (12%). Try keeping your crosshair at head-level when turning corners. Practice 'pre-aiming' common spots on the map."
-            if "map" in user_query.lower() or "corners" in user_query.lower() or "angles" in user_query.lower():
-                return "Coach (Mock): On Ascent, avoid peeking Mid aggressively without utility. A good corner for your team is the Boat House in B Market."
-            
-            return f"Coach (Mock): Interesting question! Based on the data, I'd suggest reviewing your positioning in likely 1v1 scenarios."
+            print(f"DEBUG: LLM Error ({e}). Using Enhanced Mock Response.")
+            return self._mock_data_backed_response(user_query, data_evidence)
 
-    def get_buy_recommendation(self, round_num, credits, team_loadout, outcome_prev_round):
-        """
-        Personalized Buy Phase advice.
-        """
-        context = f"Round: {round_num}. Credits: {credits}. Team Loadout: {team_loadout}. Previous Round: {'Won' if outcome_prev_round else 'Lost'}."
-        persona = "You are a strategic Valorant coach. Advise the player on what to buy (Eco, Force, Full Buy) and suggest specific weapons based on their economy."
-        return self.ask_coach(persona, "What should I buy this round?", context)
+    def _mock_data_backed_response(self, query, evidence):
+        # Fallback that simulates data-driven reasoning
+        evidence_str = f" (Based on: {evidence})" if evidence else ""
+        return f"Coach (Data-Driven Mock): Looking at the numbers{evidence_str}, the high-impact play here involves adjusting your positioning. Our models suggest this is a recurring pattern with a High confidence tier."
 
-    def get_aim_advice(self, headshot_percentage, weapon_type):
+    def analyze_mistake(self, mistake_row):
         """
-        Aim and Crosshair placement advice.
+        Explains a specific mistake flagged by MistakeDetector.
         """
-        context = f"Headshot %: {headshot_percentage}%. Weapon: {weapon_type}."
-        persona = "You are a mechanical skills coach for Valorant. pinpoint why the player might be missing shots and give actionable advice on crosshair placement, hygiene, and counter-strafing."
-        return self.ask_coach(persona, "I am missing a lot of shots. How can I improve my aim and crosshair placement?", context)
+        context = f"Event: {mistake_row['event_type']}. Score: {mistake_row['anomaly_score']:.2f}."
+        evidence = f"Dist: {mistake_row['teammate_dist']}m, Util: {mistake_row['util']}, Explanation: {mistake_row['explanation']}"
+        persona = """You are a Valorant Strategy Coach. Explain the mistake clearly. 
+        Connect the micro-action (e.g. overextending) to the macro result (round loss). 
+        Always mention the 'hard data' provided in your explanation."""
+        return self.ask_coach(persona, "Why was this flagged as a mistake?", context, evidence)
 
-    def get_map_tips(self, map_name, key_locations):
+    def explain_prediction(self, scenario_name, prediction_data):
         """
-        Map knowledge: Good/Bad corners.
+        Explains an XGBoost prediction with transparency tiers.
         """
-        context = f"Map: {map_name}. Areas of trouble: {key_locations}."
-        persona = "You are a map expert. Tell the player about common 'noob traps' (bad corners) and 'power positions' (good corners) on this map."
-        return self.ask_coach(persona, f"What are the best angles to hold and which corners should I avoid on {map_name}?", context)
-
-    def analyze_hypothetical(self, question, predictor_func=None):
-        """
-        Handles any 'What if' question, potentially using the predictor.
-        """
-        persona = """You are a data-driven Assistant Coach. 
-        If the user asks a question about a specific game state change (e.g. 'Should we have saved?'), 
-        you should formulate a hypothesis. 
-        If available, use provided probability data to back up your answer.
-        """
-        # In a real app, we would use function calling here to invoke predictor.py
-        # For now, we just pass the question to the LLM to interpret conceptually.
-        return self.ask_coach(persona, question)
+        context = f"Scenario: {scenario_name}"
+        evidence = (f"Predicted Win %: {prediction_data['prediction_prob']:.1%}, "
+                   f"Historical Context: {prediction_data['historical_win_rate']:.1%}, "
+                   f"Sample Size: {prediction_data['sample_size']}, "
+                   f"Confidence: {prediction_data['confidence_tier']}")
+        
+        persona = """You are a Performance Analyst. Explain the win probability for this 'What If' scenario. 
+        Be transparent about the confidence level and sample size. If confidence is 'Low', advise caution."""
+        
+        return self.ask_coach(persona, "Should we have made this choice?", context, evidence)
 
 if __name__ == "__main__":
     coach = CoachBrain()
     
-    print("--- Coach Brain Initialized ---\n")
+    print("--- Coach Brain (Data-Driven Mode) ---\n")
     
-    # 1. Buy Phase Advice
-    print(">>> Scenario: Round 3, 2000 credits, Team is saving, Lost previous round.")
-    advice = coach.get_buy_recommendation(3, 2000, "Classic/Sheriff", False)
-    print(f"Coach Says: {advice}\n")
+    # 1. Explaining a Prediction (XGBoost Result)
+    prediction_data = {
+        "prediction_prob": 0.147,
+        "historical_win_rate": 0.12,
+        "sample_size": 132,
+        "confidence_tier": "High"
+    }
     
-    # 2. Aim Advice
-    print(">>> Scenario: 12% Headshot rate with Vandal.")
-    advice = coach.get_aim_advice(12, "Vandal")
-    print(f"Coach Says: {advice}\n")
+    print(">>> Scenario: 3v5 Retake on Haven")
+    advice = coach.explain_prediction("3v5 Retake Attempt", prediction_data)
+    print(f"Coach Says:\n{advice}\n")
     
-    # 3. Map Tips
-    print(">>> Scenario: Playing on Ascent.")
-    advice = coach.get_map_tips("Ascent", "Mid Courtyard, B Main")
-    print(f"Coach Says: {advice}\n")
+    # 2. Explaining a Mistake (Isolation Forest Result)
+    mistake_data = {
+        "event_type": "Opening Duel",
+        "anomaly_score": -0.45,
+        "teammate_dist": 45,
+        "util": 0,
+        "explanation": "Overextended & Dry-peeking"
+    }
+    print(">>> Mistake: Overextended Duel")
+    explanation = coach.analyze_mistake(mistake_data)
+    print(f"Coach Says:\n{explanation}\n")
