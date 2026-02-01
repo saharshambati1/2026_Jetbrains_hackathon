@@ -1,110 +1,254 @@
 import os
-import requests
 import json
-import socket
 from dotenv import load_dotenv
+from gql import gql, Client
+from gql.transport.requests import RequestsHTTPTransport
 
 # Load environment variables
 load_dotenv()
 
 GRID_API_KEY = os.getenv("GRID_API_KEY")
-HOSTNAME = "api-op.grid.gg"
-GRAPHQL_ENDPOINT = f"https://{HOSTNAME}/central-data/graphql"
+CENTRAL_DATA_URL = "https://api-op.grid.gg/central-data/graphql"
+STATISTICS_FEED_URL = "https://api-op.grid.gg/statistics-feed/graphql"
 
 class GridClient:
     def __init__(self, api_key=None):
         self.api_key = api_key or GRID_API_KEY
         if not self.api_key:
             raise ValueError("GRID_API_KEY not found in environment variables")
+        
         self.headers = {
             "x-api-key": self.api_key,
-            "Content-Type": "application/json"
         }
         
-        # DNS Debug - Forcing IP Fallback due to persistent resolution errors
-        # try:
-        #     ip = socket.gethostbyname(HOSTNAME)
-        #     print(f"DEBUG: Resolved {HOSTNAME} to {ip}")
-        #     self.endpoint = GRAPHQL_ENDPOINT
-        # except socket.gaierror:
-        print(f"DEBUG: Forcing fallback IP for {HOSTNAME}.")
-        # Fallback to hardcoded IP (from nslookup) if possible or fail
-        # We will use one of the IPs found: 54.77.68.65
-        self.fallback_ip = "54.77.68.65"
-        self.endpoint = f"https://{self.fallback_ip}/central-data/graphql"
-        self.headers["Host"] = HOSTNAME
-        print(f"DEBUG: Using fallback IP {self.fallback_ip} with Host header.")
+        # Initialize clients for both endpoints
+        self.central_client = self._create_client(CENTRAL_DATA_URL)
+        self.stats_client = self._create_client(STATISTICS_FEED_URL)
 
-    def query(self, query_str, variables=None):
-        payload = {"query": query_str, "variables": variables or {}}
-        # Verify=False might be needed if using IP and SSL cert doesn't match IP (it won't).
-        # We accept the risk for this hackathon demo.
-        verify = True
-        if "Host" in self.headers:
-            verify = False 
-            import urllib3
-            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    def _create_client(self, url):
+        transport = RequestsHTTPTransport(
+            url=url,
+            headers=self.headers,
+            use_json=True,
+        )
+        return Client(transport=transport, fetch_schema_from_transport=False)
 
+    def execute_query(self, client_type, query_str, variables=None):
+        client = self.central_client if client_type == "central" else self.stats_client
+        query = gql(query_str)
         try:
-            response = requests.post(self.endpoint, json=payload, headers=self.headers, verify=verify)
-            if response.status_code == 200:
-                result = response.json()
-                if "errors" in result:
-                    print("GraphQL Errors:", result["errors"])
-                return result
-            else:
-                raise Exception(f"Query failed with status code {response.status_code}: {response.text}")
+            result = client.execute(query, variable_values=variables)
+            return result
         except Exception as e:
-            raise Exception(f"Request failed: {e}")
+            print(f"Error executing {client_type} query: {e}")
+            return None
 
-    def get_recent_valorant_series(self, limit=5):
+    def get_tournaments(self, first=5):
         query = """
-        query GetRecentSeries($limit: Int) {
-          series(
-            filter: { titleId: { eq: 2 } } 
-            orderBy: START_DATE_DESC
-            first: $limit
+        query GetTournaments($first: Int) {
+          tournaments(first: $first) {
+            edges {
+              node {
+                id
+                name
+              }
+            }
+          }
+        }
+        """
+        data = self.execute_query("central", query, {"first": first})
+        print("\n--- TOURNAMENT DATA ---")
+        print(json.dumps(data, indent=2))
+        return data
+
+    def get_series(self, title_id=2, first=5):
+        # Using allSeries as per introspection
+        query = """
+        query GetSeries($titleId: ID!, $first: Int) {
+          allSeries(
+            filter: { titleIds: { in: [$titleId] } }, 
+            first: $first, 
+            orderBy: StartTimeScheduled, 
+            orderDirection: DESC
           ) {
             edges {
               node {
                 id
-                start
-                end
                 teams {
-                  base {
-                    name
-                  }
-                }
-                tournament {
-                  name
+                   baseInfo {
+                     name
+                   }
                 }
               }
             }
           }
         }
         """
-        return self.query(query, variables={"limit": limit})
+        data = self.execute_query("central", query, {"titleId": str(title_id), "first": first})
+        print("\n--- SERIES DATA (via allSeries) ---")
+        print(json.dumps(data, indent=2))
+        return data
 
-    def get_all_titles(self):
+    def get_teams(self, first=5):
         query = """
-        query GetAllTitles {
-          titles {
-             id
-             name
+        query GetTeams($first: Int) {
+          teams(first: $first) {
+            edges {
+              node {
+                id
+                name
+              }
+            }
           }
         }
         """
-        return self.query(query)
+        data = self.execute_query("central", query, {"first": first})
+        print("\n--- TEAM DATA ---")
+        print(json.dumps(data, indent=2))
+        return data
+
+    def get_players(self, first=5):
+        # Using nickname as per introspection. Removed fullName due to permission error.
+        query = """
+        query GetPlayers($first: Int) {
+          players(first: $first) {
+            edges {
+              node {
+                id
+                nickname
+              }
+            }
+          }
+        }
+        """
+        data = self.execute_query("central", query, {"first": first})
+        print("\n--- PLAYER DATA ---")
+        print(json.dumps(data, indent=2))
+        return data
+
+    def get_player_stats(self, player_id, title_id=2):
+        """
+        Fetches player statistics from the Statistics Feed.
+        """
+        query = """
+        query GetPlayerStats($playerId: ID!) {
+          playerStatistics(playerId: $playerId, filter: { startedAt: { period: LAST_MONTH } }) {
+            series {
+              kills { sum }
+              deaths { sum }
+            }
+          }
+        }
+        """
+        data = self.execute_query("stats", query, {"playerId": str(player_id)})
+        print(f"\n--- PLAYER STATISTICS DATA (ID: {player_id}) ---")
+        print(json.dumps(data, indent=2))
+        return data
+
+    def get_team_stats(self, team_id):
+        """
+        Fetches team statistics from the Statistics Feed.
+        """
+        query = """
+        query GetTeamStats($teamId: ID!) {
+          teamStatistics(teamId: $teamId, filter: { startedAt: { period: LAST_MONTH } }) {
+            series {
+              kills { sum }
+              deaths { sum }
+            }
+          }
+        }
+        """
+        data = self.execute_query("stats", query, {"teamId": str(team_id)})
+        print(f"\n--- TEAM STATISTICS DATA (ID: {team_id}) ---")
+        print(json.dumps(data, indent=2))
+        return data
+
+# Constants for Cloud9
+CLOUD9_TEAM_ID = "79"
+CLOUD9_ROSTER = {
+    "OXY": "10636",
+    "vanity": "91",
+    "Xeppaa": "1193",
+    "moose": "725",
+    "v1c": "10612"
+}
+
+def save_to_json(data, filename="cloud9_dynamic_report.json"):
+    with open(filename, 'w') as f:
+        json.dump(data, f, indent=2)
+    print(f"\n[SUCCESS] Data saved to {filename}")
 
 if __name__ == "__main__":
+    client = GridClient()
+    report = {
+        "timestamp": "2026-02-01T10:45:00Z",
+        "team_info": {},
+        "recent_series": [],
+        "roster_stats": {},
+        "map_stats": {}
+    }
+    
+    print("\n=== CLOUD9 DYNAMIC DATA REPORT ===")
+    
+    # 1. Team Context
     try:
-        client = GridClient()
-        print("Fetching Titles...")
-        titles = client.get_all_titles()
-        print(json.dumps(titles, indent=2))
+        report["team_info"] = client.execute_query("central", """
+        query GetC9($id: ID!) { team(id: $id) { id name } }
+        """, {"id": CLOUD9_TEAM_ID})
+    except: pass
+    
+    # 2. Recent Series
+    try:
+        series_res = client.execute_query("central", """
+        query GetC9Series($teamId: ID!) {
+          allSeries(filter: { teamIds: { in: [$teamId] } }, first: 5, orderBy: StartTimeScheduled, orderDirection: DESC) {
+            edges { node { id startTimeScheduled teams { baseInfo { name } } } }
+          }
+        }
+        """, {"teamId": CLOUD9_TEAM_ID})
+        report["recent_series"] = series_res.get('allSeries', {}).get('edges', [])
+    except: pass
+    
+    # 3. Roster-Wide Stats (Last Year)
+    print("\n[STEP 3] Fetching Statistics for the full Cloud9 Roster...")
+    query_roster = """
+    query GetRosterStats($playerId: ID!) {
+      playerStatistics(playerId: $playerId, filter: { startedAt: { period: LAST_YEAR } }) {
+        series {
+          kills { sum avg ratePerMinute { avg } }
+          deaths { sum avg ratePerMinute { avg } }
+          won { count }
+        }
+        game {
+          kills { sum avg }
+          deaths { sum avg }
+        }
+      }
+    }
+    """
+    
+    for nickname, p_id in CLOUD9_ROSTER.items():
+        print(f" -> Fetching stats for {nickname}...")
+        stats = client.execute_query("stats", query_roster, {"playerId": p_id})
+        report["roster_stats"][nickname] = stats
         
-        print("\nFetching Recent Series...")
-        series = client.get_recent_valorant_series()
-        print(json.dumps(series, indent=2))
-    except Exception as e:
-        print(f"Error: {e}")
+    # 4. Team-Level Combined Stats
+    print("\n[STEP 4] Fetching Team-Level Statistics...")
+    query_team = """
+    query GetTeamStats($teamId: ID!) {
+      teamStatistics(teamId: $teamId, filter: { startedAt: { period: LAST_YEAR } }) {
+        series {
+          kills { sum avg }
+          deaths { sum avg }
+        }
+      }
+    }
+    """
+    report["team_stats"] = client.execute_query("stats", query_team, {"teamId": CLOUD9_TEAM_ID})
+    
+    # 5. Save and Show
+    save_to_json(report)
+    print("\n--- FINAL CLOUD9 ROSTER SUMMARY (Sample: OXY) ---")
+    if "OXY" in report["roster_stats"]:
+        print(json.dumps(report["roster_stats"]["OXY"], indent=2))

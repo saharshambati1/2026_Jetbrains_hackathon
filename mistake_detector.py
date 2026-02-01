@@ -93,6 +93,7 @@ class MistakeDetector:
             anomaly_score = self.models[et].decision_function(X_scaled)[0]
             is_anomaly = self.models[et].predict(X_scaled)[0] == -1
             
+            # A mistake is an anomaly that results in a round loss
             if is_anomaly and row['round_win'] == 0:
                 results.append({
                     "event_id": row['event_id'],
@@ -104,6 +105,9 @@ class MistakeDetector:
                     "kast": row['kast_success'],
                     "explanation": self.explain_mistake(row, df)
                 })
+        
+        if not results:
+            return pd.DataFrame(columns=["event_id", "player_id", "event_type", "anomaly_score", "teammate_dist", "util", "kast", "explanation"])
         return pd.DataFrame(results)
 
     def explain_mistake(self, row, full_df):

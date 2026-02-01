@@ -1,0 +1,308 @@
+{
+  "timestamp": "2026-02-01T10:45:00Z",
+  "team_info": {
+    "team": {
+      "id": "79",
+      "name": "Cloud9"
+    }
+  },
+  "recent_series": [
+    {
+      "node": {
+        "id": "2843069",
+        "startTimeScheduled": "2025-08-30T00:00:00Z",
+        "teams": [
+          {
+            "baseInfo": {
+              "name": "Cloud9"
+            }
+          },
+          {
+            "baseInfo": {
+              "name": "NRG"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "node": {
+        "id": "2843066",
+        "startTimeScheduled": "2025-08-25T00:00:00Z",
+        "teams": [
+          {
+            "baseInfo": {
+              "name": "Cloud9"
+            }
+          },
+          {
+            "baseInfo": {
+              "name": "100 Thieves"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "node": {
+        "id": "2843062",
+        "startTimeScheduled": "2025-08-22T21:00:00Z",
+        "teams": [
+          {
+            "baseInfo": {
+              "name": "Cloud9"
+            }
+          },
+          {
+            "baseInfo": {
+              "name": "Sentinels"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "node": {
+        "id": "2843060",
+        "startTimeScheduled": "2025-08-21T21:00:00Z",
+        "teams": [
+          {
+            "baseInfo": {
+              "name": "Leviat\u00e1n Esports"
+            }
+          },
+          {
+            "baseInfo": {
+              "name": "Cloud9"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "node": {
+        "id": "2819704",
+        "startTimeScheduled": "2025-08-17T21:00:00Z",
+        "teams": [
+          {
+            "baseInfo": {
+              "name": "G2 Esports"
+            }
+          },
+          {
+            "baseInfo": {
+              "name": "Cloud9"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "roster_stats": {
+    "OXY": {
+      "playerStatistics": {
+        "series": {
+          "kills": {
+            "sum": 742,
+            "avg": 43.64705882352941,
+            "ratePerMinute": {
+              "avg": 0.31715
+            }
+          },
+          "deaths": {
+            "sum": 653,
+            "avg": 38.411764705882355,
+            "ratePerMinute": {
+              "avg": 0.26512
+            }
+          },
+          "won": [
+            {
+              "count": 8
+            },
+            {
+              "count": 9
+            }
+          ]
+        },
+        "game": {
+          "kills": {
+            "sum": 742,
+            "avg": 18.55
+          },
+          "deaths": {
+            "sum": 653,
+            "avg": 16.325
+          }
+        }
+      }
+    },
+    "vanity": {
+      "playerStatistics": {
+        "series": {
+          "kills": {
+            "sum": 0,
+            "avg": 0.0,
+            "ratePerMinute": {
+              "avg": 0.0
+            }
+          },
+          "deaths": {
+            "sum": 0,
+            "avg": 0.0,
+            "ratePerMinute": {
+              "avg": 0.0
+            }
+          },
+          "won": [
+            {
+              "count": 0
+            },
+            {
+              "count": 0
+            }
+          ]
+        },
+        "game": {
+          "kills": {
+            "sum": 0,
+            "avg": 0.0
+          },
+          "deaths": {
+            "sum": 0,
+            "avg": 0.0
+          }
+        }
+      }
+    },
+    "Xeppaa": {
+      "playerStatistics": {
+        "series": {
+          "kills": {
+            "sum": 695,
+            "avg": 36.578947368421055,
+            "ratePerMinute": {
+              "avg": 0.25667
+            }
+          },
+          "deaths": {
+            "sum": 648,
+            "avg": 34.10526315789474,
+            "ratePerMinute": {
+              "avg": 0.23179
+            }
+          },
+          "won": [
+            {
+              "count": 8
+            },
+            {
+              "count": 11
+            }
+          ]
+        },
+        "game": {
+          "kills": {
+            "sum": 695,
+            "avg": 15.444444444444445
+          },
+          "deaths": {
+            "sum": 648,
+            "avg": 14.4
+          }
+        }
+      }
+    },
+    "moose": {
+      "playerStatistics": {
+        "series": {
+          "kills": {
+            "sum": 587,
+            "avg": 30.894736842105264,
+            "ratePerMinute": {
+              "avg": 0.27156
+            }
+          },
+          "deaths": {
+            "sum": 566,
+            "avg": 29.789473684210527,
+            "ratePerMinute": {
+              "avg": 0.2708
+            }
+          },
+          "won": [
+            {
+              "count": 10
+            },
+            {
+              "count": 9
+            }
+          ]
+        },
+        "game": {
+          "kills": {
+            "sum": 587,
+            "avg": 14.317073170731707
+          },
+          "deaths": {
+            "sum": 566,
+            "avg": 13.804878048780488
+          }
+        }
+      }
+    },
+    "v1c": {
+      "playerStatistics": {
+        "series": {
+          "kills": {
+            "sum": 681,
+            "avg": 35.8421052631579,
+            "ratePerMinute": {
+              "avg": 0.25087
+            }
+          },
+          "deaths": {
+            "sum": 631,
+            "avg": 33.21052631578947,
+            "ratePerMinute": {
+              "avg": 0.22577
+            }
+          },
+          "won": [
+            {
+              "count": 8
+            },
+            {
+              "count": 11
+            }
+          ]
+        },
+        "game": {
+          "kills": {
+            "sum": 681,
+            "avg": 15.133333333333333
+          },
+          "deaths": {
+            "sum": 631,
+            "avg": 14.022222222222222
+          }
+        }
+      }
+    }
+  },
+  "map_stats": {},
+  "team_stats": {
+    "teamStatistics": {
+      "series": {
+        "kills": {
+          "sum": 3414,
+          "avg": 179.68421052631578
+        },
+        "deaths": {
+          "sum": 3318,
+          "avg": 174.6315789473684
+        }
+      }
+    }
+  }
+}

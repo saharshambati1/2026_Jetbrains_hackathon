@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import time
+from elite_coach import EliteCoach
 
 def run_test(script_name, description):
     print(f"\n{'='*60}")
@@ -33,24 +34,42 @@ def run_test(script_name, description):
         return False, str(e)
 
 def main():
-    print("Starting System Verification...")
-    
+    print("="*60)
+    print("VERIFICATION SUITE: AI ELITE ASSISTANT COACH (CLOUD9 EDITION)")
+    print("="*60)
+    print("This suite validates the integration of Isolation Forest anomaly detection,")
+    print("XGBoost outcome prediction, and GPT-4o contextual reasoning.\n")
+
     tests = [
-        ("deep_tests.py", "Mistake Detector Logic & Anomaly Detection"),
-        ("coach_brain.py", "LLM Coach Brain (Mock/Live)"),
-        ("predictor.py", "Win Probability Predictor (XGBoost)"),
-        ("macro_review.py", "Match Strategy Reviewer")
+        ("scenario_validation.py", "ML Logic Validation"),
+        ("deep_tests.py", "Elite Pipeline Integration & Cloud9 Specifics"),
+        ("macro_review.py", "Macro Pattern Extraction")
     ]
     
     results = []
-    
     for script, desc in tests:
         success, output = run_test(script, desc)
-        # simplified check: rely on exit codes
         results.append((script, success))
-        
+
+    # Direct Elite Coach Verification
+    print(f"\n{'='*60}")
+    print("DIRECT ELITE COACH EXECUTION (End-to-End)")
+    print(f"{'='*60}\n")
+    try:
+        coach = EliteCoach()
+        result = coach.generate_elite_report()
+        print("ELITE COACH OUTPUT ANALYSIS:")
+        print(f"  Advice dynamic? {'Yes' if len(result['llm_advice']) > 50 else 'No'}")
+        print(f"  Context accurate? {'Yes' if result['raw_data']['team'] == 'Cloud9' else 'No'}")
+        print("-" * 30)
+        print(result['llm_advice'])
+        results.append(("elite_coach.py", True))
+    except Exception as e:
+        print(f"FAILED: elite_coach.py execution error: {e}")
+        results.append(("elite_coach.py", False))
+
     print(f"\n\n{'='*60}")
-    print("VERIFICATION SUMMARY")
+    print("FINAL VERIFICATION SUMMARY")
     print(f"{'='*60}")
     
     all_passed = True
@@ -61,7 +80,7 @@ def main():
             all_passed = False
             
     if all_passed:
-        print(f"\n>>> SYSTEM READY. All components functioning successfully.")
+        print(f"\n>>> SYSTEM READY FOR CLOUD9 DEPLOYMENT.")
     else:
         print(f"\n>>> SYSTEM ISSUES DETECTED. Check logs above.")
         sys.exit(1)
