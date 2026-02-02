@@ -1,0 +1,163 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Dashboard - Cloud9 Assistant Coach{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h2>Your AI-Powered Valorant Coach</h2>
+    <p>Leverage real-time GRID data, historical analysis, and Gemini AI to elevate Cloud9's gameplay with actionable
+        insights.</p>
+</section>
+
+<section class="features-grid">
+    <!-- Macro Review Card -->
+    <div class="feature-card" onclick="runFeature('macro')">
+        <div class="feature-icon">📊</div>
+        <h3>Macro Game Review</h3>
+        <p>Automatically analyze team statistics and generate a coaching agenda highlighting strategic weaknesses and
+            patterns.</p>
+        <button class="feature-btn">
+            Run Analysis →
+        </button>
+    </div>
+
+    <!-- What-If Predictor Card -->
+    <div class="feature-card" onclick="runFeature('predictor')">
+        <div class="feature-icon">🔮</div>
+        <h3>What-If Predictor</h3>
+        <p>Model hypothetical scenarios like "Should we force buy?" using historical data and XGBoost predictions.</p>
+        <button class="feature-btn">
+            Predict Scenario →
+        </button>
+    </div>
+
+    <!-- AI Coach Chat Card -->
+    <div class="feature-card" onclick="runFeature('chat')">
+        <div class="feature-icon">💬</div>
+        <h3>AI Coach Chat</h3>
+        <p>Ask any question about strategy, economy, map control, or individual player improvement.</p>
+        <button class="feature-btn">
+            Ask Coach →
+        </button>
+    </div>
+</section>
+
+<!-- Results Panel -->
+<section id="results-panel" class="results-panel">
+    <div class="results-header">
+        <h3 id="results-title">Analysis Results</h3>
+        <button class="close-btn" onclick="closeResults()">×</button>
+    </div>
+    <div id="results-content" class="results-content">
+        <!-- Dynamic content injected here -->
+    </div>
+</section>
+
+<!-- Chat Modal (hidden by default) -->
+<div id="chat-modal" style="display: none;">
+    <div class="input-group">
+        <label for="chat-input">Your Question</label>
+        <textarea id="chat-input" rows="3"
+            placeholder="e.g., Should we force buy after losing pistol on Ascent?"></textarea>
+    </div>
+    <button class="feature-btn" onclick="submitChat()">Send to Coach</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const csrfToken = '{{ csrf_token }}';
+
+    async function runFeature(feature) {
+        const panel = document.getElementById('results-panel');
+        const content = document.getElementById('results-content');
+        const title = document.getElementById('results-title');
+
+        panel.classList.add('active');
+        content.innerHTML = '<div class="loading"><div class="spinner"></div><span>Processing...</span></div>';
+
+        if (feature === 'chat') {
+            title.textContent = 'AI Coach Chat';
+            content.innerHTML = document.getElementById('chat-modal').innerHTML;
+            return;
+        }
+
+        if (feature === 'macro') {
+            title.textContent = 'Macro Game Review';
+        } else if (feature === 'predictor') {
+            title.textContent = 'What-If Predictor';
+        }
+
+        try {
+            const response = await fetch('/api/' + feature + '/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                }
+            });
+            const data = await response.json();
+            renderResults(feature, data);
+        } catch (error) {
+            content.innerHTML = '<p style="color: var(--danger);">Error: ' + error.message + '</p>';
+        }
+    }
+
+    function renderResults(feature, data) {
+        const content = document.getElementById('results-content');
+
+        if (feature === 'macro') {
+            let html = '<div class="stat-grid">';
+            html += '<div class="stat-card"><div class="stat-value">' + (data.issues_count || 0) + '</div><div class="stat-label">Issues Found</div></div>';
+            html += '<div class="stat-card"><div class="stat-value">' + (data.players_analyzed || 5) + '</div><div class="stat-label">Players Analyzed</div></div>';
+            html += '<div class="stat-card"><div class="stat-value">' + (data.data_source || 'GRID') + '</div><div class="stat-label">Data Source</div></div>';
+            html += '</div>';
+            html += '<h4 style="margin: 1rem 0;">Coaching Agenda</h4>';
+            html += '<ul style="padding-left: 1.5rem; color: var(--text-secondary);">';
+            (data.agenda || []).forEach(item => {
+                html += '<li style="margin-bottom: 0.5rem;">' + item + '</li>';
+            });
+            html += '</ul>';
+            content.innerHTML = html;
+        } else if (feature === 'predictor') {
+            let html = '<div class="stat-grid">';
+            html += '<div class="stat-card"><div class="stat-value">' + data.force_prob + '</div><div class="stat-label">Force Buy Win %</div></div>';
+            html += '<div class="stat-card"><div class="stat-value">' + data.save_prob + '</div><div class="stat-label">Save Win %</div></div>';
+            html += '<div class="stat-card"><div class="stat-value" style="color: var(--success);">' + data.recommendation + '</div><div class="stat-label">Recommendation</div></div>';
+            html += '</div>';
+            html += '<div class="coach-response">' + data.interpretation + '</div>';
+            content.innerHTML = html;
+        } else if (feature === 'chat') {
+            content.innerHTML = '<div class="coach-response">' + data.response + '</div>';
+        }
+    }
+
+    async function submitChat() {
+        const input = document.getElementById('chat-input');
+        const question = input.value.trim();
+        if (!question) return;
+
+        const content = document.getElementById('results-content');
+        content.innerHTML = '<div class="loading"><div class="spinner"></div><span>Coach is thinking...</span></div>';
+
+        try {
+            const response = await fetch('/api/chat/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ question: question })
+            });
+            const data = await response.json();
+            renderResults('chat', data);
+        } catch (error) {
+            content.innerHTML = '<p style="color: var(--danger);">Error: ' + error.message + '</p>';
+        }
+    }
+
+    function closeResults() {
+        document.getElementById('results-panel').classList.remove('active');
+    }
+</script>
+{% endblock %}

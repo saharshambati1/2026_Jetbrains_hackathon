@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Cloud9 Assistant Coach{% endblock %}</title>
+    <meta name="description" content="AI-powered coaching insights for Cloud9 Valorant">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">🎮</div>
+            <div>
+                <h1>Cloud9 Assistant Coach</h1>
+                <span>Powered by AI + GRID Data</span>
+            </div>
+        </div>
+        <nav>
+            <span style="color: var(--text-secondary);">Sky's The Limit Hackathon 2026</span>
+        </nav>
+    </header>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2026 Cloud9 x JetBrains Hackathon • Built with Django & Gemini AI</p>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

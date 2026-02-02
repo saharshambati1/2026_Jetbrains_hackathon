@@ -2,110 +2,111 @@ import xgboost as xgb
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
 
 class HypotheticalPredictor:
     def __init__(self):
-        self.model = xgb.XGBClassifier(use_label_encoder=False, eval_metric='logloss')
+        self.model = xgb.XGBClassifier(eval_metric='logloss')
         self.is_trained = False
-        self.historical_db = None # Storage for similarity constraints
+        self.historical_db = None 
+        self.EXPECTED_COLS = [
+            'numerical_advantage', 'economy_diff', 'spike_planted', 'team_health_avg',
+            'map_Ascent', 'map_Bind', 'map_Haven', 'map_Split', 'map_Lotus', 'map_Sunset', 'map_Abyss'
+        ]
 
-    def generate_training_data(self, n_samples=2000):
+    def _generate_realistic_history(self, n_samples=5000):
         np.random.seed(42)
+        maps = ['Ascent', 'Bind', 'Haven', 'Split', 'Lotus', 'Sunset', 'Abyss']
         
-        maps = ['Haven', 'Ascent', 'Bind', 'Split']
-        num_adv = np.random.randint(-5, 6, n_samples)
-        hp_diff = np.random.normal(0, 200, n_samples)
-        econ_diff = np.random.normal(0, 5000, n_samples)
-        spike = np.random.randint(0, 2, n_samples)
-        map_labels = [np.random.choice(maps) for _ in range(n_samples)]
+        data = {
+            'map': np.random.choice(maps, n_samples),
+            'numerical_advantage': np.random.choice([-2, -1, 0, 1, 2], n_samples, p=[0.1, 0.2, 0.4, 0.2, 0.1]),
+            'economy_diff': np.random.normal(0, 2000, n_samples),
+            'spike_planted': np.random.choice([0, 1], n_samples),
+            'team_health_avg': np.random.normal(100, 20, n_samples)
+        }
         
-        # Ground Truth Probability
-        score = (num_adv * 1.5) + (hp_diff / 100) + (econ_diff / 2000) - (spike * 0.8)
-        prob = 1 / (1 + np.exp(-score))
-        wins = [1 if np.random.random() < p else 0 for p in prob]
+        df = pd.DataFrame(data)
         
-        X = pd.DataFrame({
-            'numerical_advantage': num_adv,
-            'health_diff': hp_diff,
-            'economy_diff': econ_diff,
-            'spike_planted': spike,
-            'map': map_labels
-        })
-        y = np.array(wins)
-        return X, y
+        scores = (
+            0.5 + 
+            (df['numerical_advantage'] * 0.2) + 
+            (df['economy_diff'] / 10000) + 
+            (df['spike_planted'] * 0.1)
+        )
+        probs = np.clip(scores, 0.1, 0.9)
+        df['win'] = [1 if np.random.random() < p else 0 for p in probs]
+        return df
+
+    def _prepare_features(self, df):
+        # One-hot encode
+        df_encoded = pd.get_dummies(df, columns=['map'])
+        
+        # Enforce columns
+        for col in self.EXPECTED_COLS:
+            if col not in df_encoded.columns:
+                df_encoded[col] = 0
+        
+        # Select and Sort
+        return df_encoded[self.EXPECTED_COLS]
 
     def train(self):
-        print("Training XGBoost Hypothetical Predictor with Similarity Layer...")
-        X, y = self.generate_training_data()
+        print("Loading Historical Match Data (Simulated 5,000 Rounds)...")
+        self.historical_db = self._generate_realistic_history()
         
-        # Store for similarity filtering
-        self.historical_db = X.copy()
-        self.historical_db['outcome'] = y
+        X = self._prepare_features(self.historical_db.drop('win', axis=1))
+        y = self.historical_db['win']
         
-        # One-hot encode map for the model
-        X_encoded = pd.get_dummies(X, columns=['map'])
-        
-        X_train, X_test, y_train, y_test = train_test_split(X_encoded, y, test_size=0.2, random_state=42)
-        self.model.fit(X_train, y_train)
-        
-        preds = self.model.predict(X_test)
-        print(f"Model Trained. Accuracy: {accuracy_score(y_test, preds):.2f}")
+        print("Training XGBoost Scenario Model...")
+        self.model.fit(X, y)
         self.is_trained = True
+        print("Predictor Ready.")
 
-    def predict_scenario(self, map_name, numerical_advantage, health_diff, economy_diff, spike_planted):
+    def predict_scenario(self, map_name, numerical_advantage, economy_diff, spike_planted):
         if not self.is_trained:
             self.train()
             
-        # 1. SIMILARITY CONSTRAINT: Filter historical data
-        # Find matches with same map and similar economy (+/- 2000)
-        similar_cases = self.historical_db[
-            (self.historical_db['map'] == map_name) & 
-            (self.historical_db['economy_diff'].between(economy_diff - 1000, economy_diff + 1000)) &
-            (self.historical_db['numerical_advantage'] == numerical_advantage)
+        similar_df = self.historical_db[
+            (self.historical_db['map'] == map_name) &
+            (self.historical_db['economy_diff'].between(economy_diff - 1500, economy_diff + 1500))
         ]
         
-        sample_size = len(similar_cases)
-        historical_win_rate = similar_cases['outcome'].mean() if sample_size > 0 else 0.0
-
-        # 2. MODEL PREDICTION
-        input_row = pd.DataFrame([{
+        hist_win_rate = similar_df['win'].mean() if not similar_df.empty else 0.5
+        sample_count = len(similar_df)
+        
+        input_data = pd.DataFrame([{
+            'map': map_name,
             'numerical_advantage': numerical_advantage,
-            'health_diff': health_diff,
             'economy_diff': economy_diff,
             'spike_planted': 1 if spike_planted else 0,
-            'map': map_name
+            'team_health_avg': 100 
         }])
         
-        # Ensure all columns exist for encoded model
-        X_encoded = pd.get_dummies(input_row, columns=['map'])
-        # Realign with training columns
-        model_cols = pd.get_dummies(self.historical_db.drop('outcome', axis=1), columns=['map']).columns
-        X_encoded = X_encoded.reindex(columns=model_cols, fill_value=0)
+        X_final = self._prepare_features(input_data)
+        prob = self.model.predict_proba(X_final)[0][1]
         
-        model_prob = self.model.predict_proba(X_encoded)[0][1]
-        
-        # Confidence Tier
-        confidence = "Low"
-        if sample_size > 50: confidence = "High"
-        elif sample_size > 15: confidence = "Medium"
-
         return {
-            "prediction_prob": model_prob,
-            "historical_win_rate": historical_win_rate,
-            "sample_size": sample_size,
-            "confidence_tier": confidence
+            "prediction_prob": float(prob),
+            "historical_win_rate": float(hist_win_rate),
+            "sample_size": int(sample_count),
+            "interpretation": self._interpret_prob(prob)
         }
+        
+    def _interpret_prob(self, p):
+        if p < 0.3: return "Low Probability (Risky)"
+        if p < 0.5: return "Unfavorable"
+        if p < 0.7: return "Favorable"
+        return "High Probability (Execute recommended)"
 
 if __name__ == "__main__":
     predictor = HypotheticalPredictor()
     predictor.train()
     
-    print("\n--- 'What If' Analysis: Retake vs Save on Haven ---")
+    print("\n--- 'What If' Analysis: Force Buy vs Save on Ascent ---")
+    res_force = predictor.predict_scenario('Ascent', 0, -1500, False)
+    print(f"Force Buy Scenario: {res_force['prediction_prob']:.1%} Win Rate ({res_force['interpretation']})")
     
-    # 3v5 Retake
-    res = predictor.predict_scenario('Haven', -2, -50, -1000, True)
-    print(f"Scenario: Attempting 3v5 Retake")
-    print(f"  Model Prediction: {res['prediction_prob']:.1%}")
-    print(f"  Historical Base (n={res['sample_size']}): {res['historical_win_rate']:.1%}")
-    print(f"  Confidence: {res['confidence_tier']}")
+    res_save = predictor.predict_scenario('Ascent', 0, -4000, False)
+    print(f"Save Scenario:      {res_save['prediction_prob']:.1%} Win Rate ({res_save['interpretation']})")
+    
+    delta = res_force['prediction_prob'] - res_save['prediction_prob']
+    print(f"Conclusion: Force Buying increases round win probability by {delta*100:.1f}%")

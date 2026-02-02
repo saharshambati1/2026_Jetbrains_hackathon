@@ -1,37 +1,43 @@
 import os
-import openai
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 
 load_dotenv()
 
 class CoachBrain:
     def __init__(self):
-        self.api_key = os.getenv("OPENAI_API_KEY")
+        self.api_key = os.getenv("GEMINI_API_KEY")
         if not self.api_key:
-            raise ValueError("OPENAI_API_KEY not found in environment variables")
-        self.client = openai.OpenAI(api_key=self.api_key)
+            raise ValueError("GEMINI_API_KEY not found in environment variables")
+        
+        # New google.genai client initialization
+        self.client = genai.Client(api_key=self.api_key)
+        self.model_name = 'gemini-2.0-flash' # Fast and capable
 
     def ask_coach(self, system_persona, user_query, match_context=None):
         """
-        Generic method to query the LLM with a specific persona and context.
+        Generic method to query the Gemini LLM with a specific persona and context.
         """
-        messages = [
-            {"role": "system", "content": f"{system_persona}\n\nYou are an expert in Valorant macro-strategy and player psychology. Your goal is to provide specific, actionable, and data-backed advice. Use details from the context provided to make your answer accurate and authoritative."},
-        ]
+        # Construct the prompt by combining persona, context, and query
+        full_prompt = f"{system_persona}\n\nYou are an expert in Valorant macro-strategy and player psychology. Your goal is to provide specific, actionable, and data-backed advice. Use details from the context provided to make your answer accurate and authoritative.\n\n"
         
         if match_context:
-            messages.append({"role": "system", "content": f"ANALYSIS DATA (JSON/Context):\n{match_context}"})
+            full_prompt += f"ANALYSIS DATA (JSON/Context):\n{match_context}\n\n"
             
-        messages.append({"role": "user", "content": user_query})
+        full_prompt += f"User Question: {user_query}"
 
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o", 
-                messages=messages,
-                max_tokens=600, # Increased for more detail
-                temperature=0.3 # Lowered for higher accuracy
+            # New google.genai API call
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=full_prompt,
+                config=types.GenerateContentConfig(
+                    max_output_tokens=600,
+                    temperature=0.3
+                )
             )
-            return response.choices[0].message.content.strip()
+            return response.text.strip()
         except Exception as e:
             print(f"DEBUG: LLM Error ({e}). Using Mock Response.")
             # Fallback for Demo purposes if API fails
@@ -82,7 +88,7 @@ class CoachBrain:
 if __name__ == "__main__":
     coach = CoachBrain()
     
-    print("--- Coach Brain Initialized ---\n")
+    print("--- Coach Brain Initialized (Gemini Powered) ---\n")
     
     # 1. Buy Phase Advice
     print(">>> Scenario: Round 3, 2000 credits, Team is saving, Lost previous round.")

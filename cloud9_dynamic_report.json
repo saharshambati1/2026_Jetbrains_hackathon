@@ -1,138 +1,42 @@
 {
   "timestamp": "2026-02-01T10:45:00Z",
-  "team_info": {
-    "team": {
-      "id": "79",
-      "name": "Cloud9"
-    }
-  },
-  "recent_series": [
-    {
-      "node": {
-        "id": "2843069",
-        "startTimeScheduled": "2025-08-30T00:00:00Z",
-        "teams": [
-          {
-            "baseInfo": {
-              "name": "Cloud9"
-            }
-          },
-          {
-            "baseInfo": {
-              "name": "NRG"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "node": {
-        "id": "2843066",
-        "startTimeScheduled": "2025-08-25T00:00:00Z",
-        "teams": [
-          {
-            "baseInfo": {
-              "name": "Cloud9"
-            }
-          },
-          {
-            "baseInfo": {
-              "name": "100 Thieves"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "node": {
-        "id": "2843062",
-        "startTimeScheduled": "2025-08-22T21:00:00Z",
-        "teams": [
-          {
-            "baseInfo": {
-              "name": "Cloud9"
-            }
-          },
-          {
-            "baseInfo": {
-              "name": "Sentinels"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "node": {
-        "id": "2843060",
-        "startTimeScheduled": "2025-08-21T21:00:00Z",
-        "teams": [
-          {
-            "baseInfo": {
-              "name": "Leviat\u00e1n Esports"
-            }
-          },
-          {
-            "baseInfo": {
-              "name": "Cloud9"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "node": {
-        "id": "2819704",
-        "startTimeScheduled": "2025-08-17T21:00:00Z",
-        "teams": [
-          {
-            "baseInfo": {
-              "name": "G2 Esports"
-            }
-          },
-          {
-            "baseInfo": {
-              "name": "Cloud9"
-            }
-          }
-        ]
-      }
-    }
-  ],
+  "team_info": {},
+  "recent_series": [],
   "roster_stats": {
     "OXY": {
       "playerStatistics": {
         "series": {
           "kills": {
-            "sum": 742,
-            "avg": 43.64705882352941,
+            "sum": 75,
+            "avg": 37.5,
             "ratePerMinute": {
-              "avg": 0.31715
+              "avg": 0.33488
             }
           },
           "deaths": {
-            "sum": 653,
-            "avg": 38.411764705882355,
+            "sum": 69,
+            "avg": 34.5,
             "ratePerMinute": {
-              "avg": 0.26512
+              "avg": 0.30855
             }
           },
           "won": [
             {
-              "count": 8
+              "count": 1
             },
             {
-              "count": 9
+              "count": 1
             }
           ]
         },
         "game": {
           "kills": {
-            "sum": 742,
-            "avg": 18.55
+            "sum": 75,
+            "avg": 18.75
           },
           "deaths": {
-            "sum": 653,
-            "avg": 16.325
+            "sum": 69,
+            "avg": 17.25
           }
         }
       }
@@ -179,36 +83,36 @@
       "playerStatistics": {
         "series": {
           "kills": {
-            "sum": 695,
-            "avg": 36.578947368421055,
+            "sum": 146,
+            "avg": 36.5,
             "ratePerMinute": {
-              "avg": 0.25667
+              "avg": 0.26856
             }
           },
           "deaths": {
-            "sum": 648,
-            "avg": 34.10526315789474,
+            "sum": 130,
+            "avg": 32.5,
             "ratePerMinute": {
-              "avg": 0.23179
+              "avg": 0.23386
             }
           },
           "won": [
             {
-              "count": 8
+              "count": 1
             },
             {
-              "count": 11
+              "count": 3
             }
           ]
         },
         "game": {
           "kills": {
-            "sum": 695,
-            "avg": 15.444444444444445
+            "sum": 146,
+            "avg": 16.22222222222222
           },
           "deaths": {
-            "sum": 648,
-            "avg": 14.4
+            "sum": 130,
+            "avg": 14.444444444444445
           }
         }
       }
@@ -217,36 +121,36 @@
       "playerStatistics": {
         "series": {
           "kills": {
-            "sum": 587,
-            "avg": 30.894736842105264,
+            "sum": 108,
+            "avg": 27.0,
             "ratePerMinute": {
-              "avg": 0.27156
+              "avg": 0.2235
             }
           },
           "deaths": {
-            "sum": 566,
-            "avg": 29.789473684210527,
+            "sum": 101,
+            "avg": 25.25,
             "ratePerMinute": {
-              "avg": 0.2708
+              "avg": 0.2117
             }
           },
           "won": [
             {
-              "count": 10
+              "count": 2
             },
             {
-              "count": 9
+              "count": 2
             }
           ]
         },
         "game": {
           "kills": {
-            "sum": 587,
-            "avg": 14.317073170731707
+            "sum": 108,
+            "avg": 13.5
           },
           "deaths": {
-            "sum": 566,
-            "avg": 13.804878048780488
+            "sum": 101,
+            "avg": 12.625
           }
         }
       }
@@ -255,36 +159,36 @@
       "playerStatistics": {
         "series": {
           "kills": {
-            "sum": 681,
-            "avg": 35.8421052631579,
+            "sum": 130,
+            "avg": 32.5,
             "ratePerMinute": {
-              "avg": 0.25087
+              "avg": 0.23126
             }
           },
           "deaths": {
-            "sum": 631,
-            "avg": 33.21052631578947,
+            "sum": 137,
+            "avg": 34.25,
             "ratePerMinute": {
-              "avg": 0.22577
+              "avg": 0.24454
             }
           },
           "won": [
             {
-              "count": 8
+              "count": 1
             },
             {
-              "count": 11
+              "count": 3
             }
           ]
         },
         "game": {
           "kills": {
-            "sum": 681,
-            "avg": 15.133333333333333
+            "sum": 130,
+            "avg": 14.444444444444445
           },
           "deaths": {
-            "sum": 631,
-            "avg": 14.022222222222222
+            "sum": 137,
+            "avg": 15.222222222222221
           }
         }
       }
@@ -295,12 +199,12 @@
     "teamStatistics": {
       "series": {
         "kills": {
-          "sum": 3414,
-          "avg": 179.68421052631578
+          "sum": 723,
+          "avg": 180.75
         },
         "deaths": {
-          "sum": 3318,
-          "avg": 174.6315789473684
+          "sum": 702,
+          "avg": 175.5
         }
       }
     }

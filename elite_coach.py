@@ -7,68 +7,55 @@ from predictor import HypotheticalPredictor
 from macro_review import MacroReviewGenerator
 
 class EliteCoach:
-    def __init__(self, use_mock_data=True):
+    def __init__(self):
         self.brain = CoachBrain()
-        self.detector = MistakeDetector()
+        # self.detector = MistakeDetector() # Deprecated for this iteration unless using granular events
         self.predictor = HypotheticalPredictor()
-        self.reviewer = MacroReviewGenerator()
-        self.use_mock_data = use_mock_data
+        self.reviewer = MacroReviewGenerator(report_path="cloud9_dynamic_report.json")
         
-        # Pre-train models if using mock data
-        if use_mock_data:
-            print("Initializing Elite Coach with pre-trained models...")
-            event_df = generate_valorant_event_data(500)
-            self.detector.train_per_event(event_df)
-            self.predictor.train()
+        # Train predictor once on init
+        self.predictor.train()
 
-    def generate_elite_report(self, team_name="Cloud9", opponent="Team Liquid", map_name="Ascent"):
+    def generate_elite_report(self, team_name="Cloud9", opponent="TBD", map_name="Ascent"):
         print(f"Generating Elite Coaching Report for {team_name}...")
         
-        # 1. Macro Analysis
-        match_df = self.reviewer.generate_mock_match()
-        macro_agenda = self.reviewer.analyze_match(match_df)
+        # 1. Macro Analysis (Real Data)
+        print(" -> Running Automated Macro Review...")
+        macro_report = self.reviewer.generate_review_agenda(match_id="Latest", team_a=team_name)
+        macro_agenda = macro_report.get("Agenda Items", [])
         
-        # 2. Player-Specific Anomaly Detection
-        # Simulate recent events for OXY and Vanity
-        events = generate_valorant_event_data(50)
-        # Force some anomalies for demonstration
-        events.loc[0, ['teammate_distance', 'kast_success', 'round_win']] = [60.0, 0, 0] # OXY overextend
-        events.loc[1, ['utility_used', 'kast_success', 'round_win']] = [5, 0, 0] # Vanity panic util
+        # 2. Hypothetical "What-If" Analysis (Historical Data)
+        print(" -> Running Hypothetical Scenario Analysis...")
+        # What if they forced instead of saving on a lost pistol? (-1500 econ diff example)
+        what_if_force = self.predictor.predict_scenario(map_name, 0, -1500, False)
+        what_if_save = self.predictor.predict_scenario(map_name, 0, -3500, False) # Full save
         
-        mistakes = self.detector.detect_mistakes(events)
-        
-        # 3. Hypothetical "What-If" Analysis
-        # What if they forced instead of saving on a lost pistol?
-        what_if_force = self.predictor.predict_scenario(map_name, 0, 0, -2000, False)
-        what_if_save = self.predictor.predict_scenario(map_name, 0, 0, 3000, False)
-        
-        # 4. Synthesize for LLM
-        # Handle non-serializable float32 from XGBoost/NumPy
+        # 3. Synthesize for LLM
         context = {
             "team": team_name,
             "opponent": opponent,
             "map": map_name,
             "macro_issues": macro_agenda,
-            "player_mistakes": mistakes[['player_id', 'event_type', 'explanation']].head(3).to_dict('records'),
-            "win_probs": {
-                "force_buy_prob": float(what_if_force['prediction_prob']),
-                "save_buy_prob": float(what_if_save['prediction_prob'])
+            "hypothetical_analysis": {
+                "force_buy_scenario": f"Win Prob: {what_if_force['prediction_prob']:.1%} ({what_if_force['interpretation']})",
+                "save_scenario": f"Win Prob: {what_if_save['prediction_prob']:.1%} ({what_if_save['interpretation']})",
+                "recommendation": "Force Buy" if what_if_force['prediction_prob'] > what_if_save['prediction_prob'] else "Save"
             }
         }
         
         system_persona = f"""You are the Elite Assistant Coach for {team_name} Valorant. 
         Your advice must be extremely dynamic, data-backed, and accurate.
-        Focus on Cloud9's aggressive style but highlight where discipline is failing.
-        Be concise but impactful. Address players like OXY and Vanity directly if they appear in the data.
+        Use the provided Macro Review Agenda to highlight team weaknesses (e.g., if stats show 'Negative Opening Duel Ratio', mention it).
+        Use the Hypothetical Analysis to give a definitive answer on 'What If' scenarios.
+        Review the JSON context and generate a cohesive, professional coaching report.
         """
         
-        user_query = f"Based on the latest match data on {map_name}, give us a strategic review."
+        user_query = f"Give me a strategic review of the team's recent performance and advice on whether we should force buy more often."
         
-        # Safe JSON dump for debugging/logging
+        # Safe JSON dump
         try:
             context_str = json.dumps(context, indent=2)
         except TypeError:
-            # Emergency fallback: convert everything to str if complex types persist
             context_str = str(context)
 
         report = self.brain.ask_coach(system_persona, user_query, match_context=context_str)
@@ -87,6 +74,5 @@ if __name__ == "__main__":
     print("="*50)
     print(result['llm_advice'])
     print("\n--- Summary of Data Used ---")
-    print(f"Macro Issues: {len(result['raw_data']['macro_issues'])}")
-    print(f"Mistakes Detected: {len(result['raw_data']['player_mistakes'])}")
-    print(f"Alternative Strategy Prob (Save): {result['raw_data']['win_probs']['save_buy_prob']:.1%}")
+    print(f"Macro Issues Identified: {len(result['raw_data']['macro_issues'])}")
+    print(f"Hypothetical Rec: {result['raw_data']['hypothetical_analysis']['recommendation']}")

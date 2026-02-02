@@ -62,7 +62,7 @@ class GridClient:
         return data
 
     def get_series(self, title_id=2, first=5):
-        # Using allSeries as per introspection
+        # Fallback to basic Series data as 'matches'/'games' fields are not exposed in this schema variant.
         query = """
         query GetSeries($titleId: ID!, $first: Int) {
           allSeries(
@@ -74,9 +74,11 @@ class GridClient:
             edges {
               node {
                 id
+                startTimeScheduled
                 teams {
                    baseInfo {
                      name
+                     id
                    }
                 }
               }
@@ -86,7 +88,9 @@ class GridClient:
         """
         data = self.execute_query("central", query, {"titleId": str(title_id), "first": first})
         print("\n--- SERIES DATA (via allSeries) ---")
-        print(json.dumps(data, indent=2))
+        if data:
+            # print(json.dumps(data, indent=2))
+            pass
         return data
 
     def get_teams(self, first=5):
@@ -134,15 +138,19 @@ class GridClient:
         query GetPlayerStats($playerId: ID!) {
           playerStatistics(playerId: $playerId, filter: { startedAt: { period: LAST_MONTH } }) {
             series {
-              kills { sum }
-              deaths { sum }
+              kills { sum avg ratePerMinute { avg } }
+              deaths { sum avg ratePerMinute { avg } }
+              won { count }
+            }
+            game {
+              kills { sum avg }
+              deaths { sum avg }
             }
           }
         }
         """
         data = self.execute_query("stats", query, {"playerId": str(player_id)})
         print(f"\n--- PLAYER STATISTICS DATA (ID: {player_id}) ---")
-        print(json.dumps(data, indent=2))
         return data
 
     def get_team_stats(self, team_id):
@@ -153,15 +161,15 @@ class GridClient:
         query GetTeamStats($teamId: ID!) {
           teamStatistics(teamId: $teamId, filter: { startedAt: { period: LAST_MONTH } }) {
             series {
-              kills { sum }
-              deaths { sum }
+              kills { sum avg }
+              deaths { sum avg }
             }
           }
         }
         """
         data = self.execute_query("stats", query, {"teamId": str(team_id)})
         print(f"\n--- TEAM STATISTICS DATA (ID: {team_id}) ---")
-        print(json.dumps(data, indent=2))
+        # print(json.dumps(data, indent=2))
         return data
 
 # Constants for Cloud9
@@ -193,59 +201,39 @@ if __name__ == "__main__":
     
     # 1. Team Context
     try:
-        report["team_info"] = client.execute_query("central", """
+        team_data = client.execute_query("central", """
         query GetC9($id: ID!) { team(id: $id) { id name } }
         """, {"id": CLOUD9_TEAM_ID})
+        if team_data: report["team_info"] = team_data
     except: pass
     
-    # 2. Recent Series
+    # 2. Recent Series (Detailed)
     try:
-        series_res = client.execute_query("central", """
-        query GetC9Series($teamId: ID!) {
-          allSeries(filter: { teamIds: { in: [$teamId] } }, first: 5, orderBy: StartTimeScheduled, orderDirection: DESC) {
-            edges { node { id startTimeScheduled teams { baseInfo { name } } } }
-          }
-        }
-        """, {"teamId": CLOUD9_TEAM_ID})
-        report["recent_series"] = series_res.get('allSeries', {}).get('edges', [])
-    except: pass
+        series_res = client.get_series(title_id=2, first=5)
+        if series_res:
+            report["recent_series"] = series_res.get('allSeries', {}).get('edges', [])
+        else:
+            print("Warning: No series data returned.")
+    except Exception as e:
+        print(f"Failed to fetch detailed series data: {e}")
     
     # 3. Roster-Wide Stats (Last Year)
     print("\n[STEP 3] Fetching Statistics for the full Cloud9 Roster...")
-    query_roster = """
-    query GetRosterStats($playerId: ID!) {
-      playerStatistics(playerId: $playerId, filter: { startedAt: { period: LAST_YEAR } }) {
-        series {
-          kills { sum avg ratePerMinute { avg } }
-          deaths { sum avg ratePerMinute { avg } }
-          won { count }
-        }
-        game {
-          kills { sum avg }
-          deaths { sum avg }
-        }
-      }
-    }
-    """
     
     for nickname, p_id in CLOUD9_ROSTER.items():
         print(f" -> Fetching stats for {nickname}...")
-        stats = client.execute_query("stats", query_roster, {"playerId": p_id})
-        report["roster_stats"][nickname] = stats
+        try:
+            stats = client.get_player_stats(p_id)
+            if stats: report["roster_stats"][nickname] = stats
+        except Exception as e:
+             print(f"Failed to fetch stats for {nickname}: {e}")
         
     # 4. Team-Level Combined Stats
     print("\n[STEP 4] Fetching Team-Level Statistics...")
-    query_team = """
-    query GetTeamStats($teamId: ID!) {
-      teamStatistics(teamId: $teamId, filter: { startedAt: { period: LAST_YEAR } }) {
-        series {
-          kills { sum avg }
-          deaths { sum avg }
-        }
-      }
-    }
-    """
-    report["team_stats"] = client.execute_query("stats", query_team, {"teamId": CLOUD9_TEAM_ID})
+    try:
+        t_stats = client.get_team_stats(CLOUD9_TEAM_ID)
+        if t_stats: report["team_stats"] = t_stats
+    except: pass
     
     # 5. Save and Show
     save_to_json(report)
